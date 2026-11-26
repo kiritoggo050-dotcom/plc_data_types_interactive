@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตัวแปรและประเภทข้อมูลสำหรับระบบ PLC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════ Design Tokens ═══════════════════ */
+:root{
+  --bg:#f7f8fa;--card:#ffffff;--ink:#1a1d21;--sub:#5e6368;--mute:#8c9196;
+  --line:#e3e5e8;--acc:#1a73e8;--acc2:#174ea6;--acc-bg:#e8f0fe;
+  --ok:#1e8e3e;--ok-bg:#e6f4ea;--warn:#f9ab00;--warn-bg:#fef7e0;
+  --bad:#d93025;--bad-bg:#fce8e6;--led:#f9ab00;--led-glow:rgba(249,171,0,.35);
+  --radius:12px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  --shadow-lg:0 4px 12px rgba(0,0,0,.1);
+  color-scheme:light
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1a1d21;--card:#25292e;--ink:#e8eaed;--sub:#9aa0a6;--mute:#6b7075;
+  --line:#3c4043;--acc:#8ab4f8;--acc2:#aecbfa;--acc-bg:#1e3a5f;
+  --ok:#81c995;--ok-bg:#1b3626;--warn:#fdd663;--warn-bg:#3e3214;
+  --bad:#f28b82;--bad-bg:#3c1f1e;--led:#fdd663;--led-glow:rgba(253,214,99,.3);
+  --shadow:0 1px 3px rgba(0,0,0,.3);--shadow-lg:0 4px 12px rgba(0,0,0,.4);
+  color-scheme:dark
+}}
+
+/* ═══════════════════ Reset & Base ═══════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;padding-top:env(safe-area-inset-top,0)}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.7 Prompt,"Noto Sans Thai",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+
+/* ═══════════════════ Layout ═══════════════════ */
+.wrap{max-width:860px;margin:0 auto;padding:0 16px}
+
+/* ═══════════════════ Header ═══════════════════ */
+.site-header{padding:28px 0 20px;border-bottom:1px solid var(--line)}
+.site-header h1{font-size:1.5rem;font-weight:700;letter-spacing:-.01em;line-height:1.3}
+.site-header .meta{color:var(--sub);font-size:.82rem;margin-top:4px;display:flex;flex-wrap:wrap;gap:6px 16px}
+.site-header .meta span::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--acc);margin-right:6px;vertical-align:middle}
+
+/* ═══════════════════ Progress Bar ═══════════════════ */
+.progress-wrap{padding:14px 0;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.progress-bar{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.progress-bar b{display:block;height:100%;background:var(--acc);border-radius:3px;transition:width .4s ease}
+.progress-label{font-size:.78rem;color:var(--sub);white-space:nowrap;min-width:80px;text-align:right}
+
+/* ═══════════════════ Nav Tabs ═══════════════════ */
+.nav-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:14px 0;position:sticky;top:0;background:var(--bg);z-index:10}
+.tab{white-space:nowrap;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:500 .82rem/1 Prompt,sans-serif;cursor:pointer;background:var(--card);color:var(--sub);transition:all .15s ease;display:flex;align-items:center;gap:6px;user-select:none}
+.tab:hover{border-color:var(--acc);color:var(--acc)}
+.tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+.tab .check{font-size:.7rem;opacity:.6}
+/* Nav arrows */
+.nav-arrows{display:flex;gap:8px;justify-content:space-between;margin:8px 0 4px}
+.nav-arrow{font:500 .85rem/1 Prompt,sans-serif;padding:10px 18px;border-radius:8px;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--ink);transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.nav-arrow:hover{border-color:var(--acc);color:var(--acc)}
+.nav-arrow:disabled{opacity:.3;cursor:default;border-color:var(--line);color:var(--mute)}
+
+/* ═══════════════════ Content ═══════════════════ */
+main{padding:8px 0 60px}
+h2{font-size:1.25rem;font-weight:600;margin:20px 0 6px;display:flex;align-items:center;gap:8px}
+h2 .ico{font-size:1.1rem}
+h3{font-size:1rem;font-weight:600;margin:20px 0 6px;color:var(--ink)}
+p,.desc{color:var(--sub);font-size:.9rem;line-height:1.65;margin:4px 0 12px}
+
+/* Card */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
+.card-flat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:10px 0}
+
+/* Key Takeaway */
+.takeaway{background:var(--acc-bg);border:1px solid var(--acc);border-radius:var(--radius);padding:14px 16px;margin:16px 0;font-size:.88rem;line-height:1.6}
+.takeaway b{color:var(--acc);font-weight:600}
+.takeaway::before{content:"💡";margin-right:6px}
+
+/* Grid cards */
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.grid4 .gc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:4px;transition:box-shadow .15s}
+.grid4 .gc:hover{box-shadow:var(--shadow-lg)}
+.gc b{font-size:.95rem}.gc small{color:var(--sub);font-size:.8rem}
+.gc .bar{height:8px;background:var(--line);border-radius:4px;margin-top:8px;overflow:hidden}
+.gc .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:4px}
+
+/* Output box */
+.out{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:8px;padding:12px 14px;margin:10px 0;font-family:"Fira Code","Courier New",monospace;font-size:.88rem;overflow-x:auto;line-height:1.65}
+
+/* Table */
+.tw{overflow-x:auto;margin:10px 0;border-radius:var(--radius);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+thead{background:var(--acc-bg)}
+th{padding:10px 12px;text-align:left;font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em;color:var(--acc);border-bottom:2px solid var(--line)}
+td{padding:8px 12px;border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--acc-bg)}
+td.m,.mono{font-family:"Fira Code","Courier New",monospace}
+
+/* Bits */
+.bits{display:flex;gap:16px;flex-wrap:wrap}
+.byte-group{display:flex;gap:4px;flex-wrap:wrap}
+.byte-group p{flex-basis:100%;margin:0;font-size:.78rem;color:var(--sub);font-weight:500}
+.bit{width:44px;height:56px;padding:0;font-family:"Fira Code","Courier New",monospace;font-weight:700;font-size:.95rem;border-radius:8px;cursor:pointer;transition:all .15s;background:var(--card);border:1.5px solid var(--line);color:var(--ink)}
+.bit:hover{border-color:var(--acc);transform:translateY(-1px)}
+.bit small{display:block;font-size:.6rem;font-weight:400;color:var(--mute)}
+.bit.on{background:var(--led);color:#1a1d21;border-color:var(--led);box-shadow:0 0 10px var(--led-glow)}
+
+/* ASCII grid */
+.gr{display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:3px}
+.gr button{padding:4px 0;font-family:"Fira Code","Courier New",monospace;font-size:.85rem;border-radius:6px;background:var(--card);border:1px solid var(--line);cursor:pointer;color:var(--ink);transition:all .1s}
+.gr button:hover{background:var(--acc-bg);border-color:var(--acc)}
+
+/* Memory cells */
+.cell{display:inline-block;width:68px;text-align:center;border:1.5px solid var(--line);padding:6px 0;font-family:"Fira Code","Courier New",monospace;font-size:.8rem;border-radius:6px;transition:all .15s;margin:2px}
+.cell.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+
+/* LED */
+.led{display:inline-block;width:16px;height:16px;border-radius:50%;background:var(--line);vertical-align:middle;transition:all .2s}
+.led.on{background:var(--led);box-shadow:0 0 10px var(--led-glow)}
+
+/* Bar progress */
+.bar-anim{height:14px;background:var(--line);border-radius:7px;overflow:hidden}
+.bar-anim b{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:7px}
+
+/* Status chips */
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.chip-ok{background:var(--ok-bg);color:var(--ok);font-size:.8rem;padding:2px 10px;border-radius:12px;font-weight:500}
+.chip-bad{background:var(--bad-bg);color:var(--bad);font-size:.8rem;padding:2px 10px;border-radius:12px;font-weight:500}
+
+/* Options / Quiz */
+.opts{display:grid;gap:8px}
+.opts button{text-align:left;padding:12px 16px;border-radius:10px;font-size:.9rem;background:var(--card);border:1.5px solid var(--line);cursor:pointer;color:var(--ink);transition:all .15s;line-height:1.4}
+.opts button:hover:not(:disabled){border-color:var(--acc);background:var(--acc-bg)}
+.opts button.sel{background:var(--acc);color:#fff;border-color:var(--acc)}
+.opts button.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.opts button:disabled{opacity:.7;cursor:default}
+
+/* Buttons */
+.btn{font:500 .88rem/1 Prompt,sans-serif;padding:10px 20px;border-radius:8px;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--acc);color:#fff}.btn-primary:hover{background:var(--acc2)}
+.btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--ink)}.btn-outline:hover{border-color:var(--acc);color:var(--acc)}
+.btn-sm{padding:6px 14px;font-size:.82rem;border-radius:6px}
+
+/* Inputs */
+input[type="range"]{accent-color:var(--acc)}
+input[type="number"],input[type="text"],select{font:inherit;background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--ink);transition:border-color .15s}
+input:focus,select:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-bg)}
+input[type="checkbox"]{accent-color:var(--acc);width:18px;height:18px;cursor:pointer}
+label{cursor:pointer;font-size:.9rem;display:flex;align-items:center;gap:8px}
+
+/* Footer */
+footer{text-align:center;color:var(--mute);font-size:.78rem;padding:20px 16px 32px;border-top:1px solid var(--line);margin-top:24px}
+
+/* Animations */
+@media(prefers-reduced-motion:no-preference){
+  .bar-anim b{transition:width .3s ease}
+  .fade-in{animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+  .pop{animation:pop .3s ease}
+}
+
+/* ═══════════════════ Responsive ═══════════════════ */
+@media(max-width:600px){
+  .site-header h1{font-size:1.2rem}
+  .grid4{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+  .bit{width:38px;height:48px;font-size:.85rem}
+  .cell{width:56px;font-size:.72rem}
+  .tab{padding:6px 10px;font-size:.75rem}
+  .nav-arrow{padding:8px 12px;font-size:.8rem}
+}
+@media print{
+  body{background:#fff;color:#000}
+  .nav-tabs,.nav-arrows,.progress-wrap,.no-print{display:none!important}
+  .card,.card-flat,.tw{box-shadow:none;border-color:#ccc}
+  .wrap{max-width:100%;padding:0}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="site-header">
+    <h1>ตัวแปรและประเภทข้อมูลสำหรับระบบ PLC</h1>
+    <div class="meta">
+      <span>สื่อการเรียนรู้แบบปฏิสัมพันธ์ 8 โมดูล</span>
+      <span>รายวิชาโปรแกรมเมเบิลลอจิกคอนโทรล (20105-2006)</span>
+    </div>
+  </header>
+
+  <div class="progress-wrap">
+    <div class="progress-bar"><b id="pbar" style="width:0"></b></div>
+    <div class="progress-label" id="plabel">0 / 8 โมดูล</div>
+  </div>
+
+  <nav class="nav-tabs" id="n" aria-label="โมดูลการเรียนรู้"></nav>
+  <main id="m"></main>
+  <div class="nav-arrows" id="navarr"></div>
+
+  <footer>วิทยาลัยการอาชีพบางปะกง · แผนกแมคคาทรอนิกส์และหุ่นยนต์</footer>
+</div>
+
+<script>
+/* ═══════════════════ Utilities ═══════════════════ */
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const f=n=>n.toLocaleString("en-US"),hx=(n,l=2)=>n.toString(16).toUpperCase().padStart(l,"0");
+const wrap=(x,b)=>((x+2**(b-1))%2**b+2**b)%2**b-2**(b-1);
+let tm=null,seen=new Set();
+
+/* ═══════════════════ Module Registry ═══════════════════ */
+const M=[
+  ["พื้นฐาน 101","📐",m1],
+  ["คลังชนิดข้อมูล","📦",m2],
+  ["ตัวช่วยเลือก","🧭",m3],
+  ["ล็อกเกอร์ 16-Bit","🔢",m4],
+  ["ASCII & String","🔤",m5],
+  ["เทียบแบรนด์ PLC","🔀",m6],
+  ["Timer & Counter","⏱️",m7],
+  ["แบบทดสอบ","📝",m8]
+];
+
+function updateProgress(){
+  const pct=seen.size/M.length*100;
+  $("#pbar").style.width=pct+"%";
+  $("#plabel").textContent=`${seen.size} / ${M.length} โมดูล`;
+}
+
+let curMod=0;
+function go(i){
+  clearInterval(tm);curMod=i;seen.add(i);updateProgress();
+  $("#n").innerHTML=M.map((x,j)=>`<button class="tab ${j==i?"active":""}" onclick="go(${j})" aria-label="โมดูล ${j+1}: ${x[0]}">${x[1]} ${j+1}. ${x[0]}${seen.has(j)&&j!=i?' <span class="check">✓</span>':""}</button>`).join("");
+  // Nav arrows
+  const prevBtn=i>0?`<button class="nav-arrow" onclick="go(${i-1})">← ${M[i-1][0]}</button>`:`<button class="nav-arrow" disabled>← ก่อนหน้า</button>`;
+  const nextBtn=i<M.length-1?`<button class="nav-arrow" onclick="go(${i+1})">${M[i+1][0]} →</button>`:`<button class="nav-arrow" disabled>ถัดไป →</button>`;
+  $("#navarr").innerHTML=prevBtn+nextBtn;
+  M[i][2]($("#m"));scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ═══════════════════ M1: พื้นฐาน 101 ═══════════════════ */
+function m1(e){
+  e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">📐</span> ทำไมต้องมีชนิดข้อมูล</h2>
+<p>หน่วยความจำของ PLC เก็บเป็น<b>บิต</b> (0 หรือ 1) ชนิดข้อมูลบอกว่าจะใช้กี่บิตและตีความค่าอย่างไร — ใช้บิตมากเก็บค่าได้ช่วงกว้าง แต่กินหน่วยความจำมากขึ้น</p>
+
+<div class="grid4">${[
+  ["BOOL","สวิตช์ ON/OFF",1,"เช่น เซนเซอร์ตรวจจับชิ้นงาน"],
+  ["BYTE / SINT","กล่องเล็ก 8 บิต",8,"เช่น กลุ่มสถานะ 8 จุด"],
+  ["INT / WORD","กล่องกลาง 16 บิต",16,"เช่น นับชิ้นงาน ค่า Timer"],
+  ["DINT / REAL","กล่องใหญ่ 32 บิต",32,"เช่น ค่าอนาล็อก อุณหภูมิ"]
+].map(a=>`<div class="gc">
+  <b>${a[0]}</b><small>${a[1]}</small>
+  <div class="bar"><i style="width:${a[2]*3}%"></i></div>
+  <span style="font-size:.82rem;color:var(--acc);font-weight:500">${a[2]} บิต</span>
+  <small>${a[3]}</small>
+</div>`).join("")}</div>
+
+<div class="card">
+  <label style="font-weight:500">ลองเลื่อนจำนวนบิต: <b id="nb" style="color:var(--acc)">8</b> บิต
+    <input type="range" id="r" min="1" max="32" value="8" style="flex:1;min-width:120px">
+  </label>
+  <div id="o" class="out" style="margin-top:10px"></div>
+</div>
+
+<h3>🏭 ตัวอย่างการประยุกต์ใช้จริง</h3>
+<div class="card-flat">
+  <p style="margin:0"><b>โจทย์:</b> โรงงานต้องนับชิ้นงานได้ถึง 50,000 ชิ้น ควรใช้ตัวแปรชนิดใด?</p>
+  <div class="out" style="margin-top:8px">
+    ❌ INT (16 บิต) → เก็บได้สูงสุด 32,767 → <span class="bad">ไม่พอ! ค่าล้น</span><br>
+    ❌ UINT (16 บิต) → เก็บได้สูงสุด 65,535 → พอ แต่ถ้าขยายภายหลัง?<br>
+    ✅ <b>DINT (32 บิต)</b> → เก็บได้ถึง 2,147,483,647 → <span class="ok">ปลอดภัย เผื่ออนาคต</span>
+  </div>
+</div>
+
+<div class="takeaway"><b>Key Takeaway:</b> เลือกชนิดข้อมูลให้พอดีกับงาน — เล็กเกินไปค่าล้น ใหญ่เกินไปเปลืองหน่วยความจำ</div>
+</div>`;
+
+  const u=()=>{const n=+$("#r").value,p=2**n;
+    $("#nb").textContent=n;
+    $("#o").innerHTML=`แทนค่าได้ 2<sup>${n}</sup> = <b>${f(p)}</b> ค่า<br>ไม่มีเครื่องหมาย: <b>0</b> ถึง <b>${f(p-1)}</b><br>มีเครื่องหมาย: <b>${f(-p/2)}</b> ถึง <b>${f(p/2-1)}</b>`};
+  $("#r").oninput=u;u();
+}
+
+/* ═══════════════════ M2: คลังชนิดข้อมูล ═══════════════════ */
+const T=[
+  ["BOOL","1","0 / 1","สัญญาณ ON/OFF เช่น สวิตช์ เซนเซอร์","r"],
+  ["BYTE","8","16#00 ถึง 16#FF","กลุ่มบิต 8 จุด","r"],
+  ["WORD","16","16#0000 ถึง 16#FFFF","กลุ่มบิต 16 จุด","r"],
+  ["DWORD","32","16#0 ถึง 16#FFFFFFFF","กลุ่มบิต 32 จุด","r"],
+  ["SINT","8","-128 ถึง 127","จำนวนเต็มเล็ก (มีเครื่องหมาย)","i"],
+  ["USINT","8","0 ถึง 255","จำนวนเต็มเล็ก ไม่ติดลบ","i"],
+  ["INT","16","-32,768 ถึง 32,767","ตัวนับ ค่าตั้งทั่วไป","i"],
+  ["UINT","16","0 ถึง 65,535","ค่าไม่ติดลบ","i"],
+  ["DINT","32","±2,147,483,648","ตัวนับสะสมค่าสูง","i"],
+  ["UDINT","32","0 ถึง 4,294,967,295","ค่าไม่ติดลบขนาดใหญ่","i"],
+  ["LINT","64","±9.22×10¹⁸","จำนวนเต็มใหญ่มาก","i"],
+  ["REAL","32","±3.4×10³⁸ (ละเอียด ~7 หลัก)","อนาล็อกที่แปลงหน่วยแล้ว เช่น 36.75 °C","d"],
+  ["LREAL","64","±1.8×10³⁰⁸ (~15 หลัก)","คำนวณละเอียดสูง","d"],
+  ["TIME","32","เช่น T#5s, T#1m30s","ค่าเวลาของ Timer","o"],
+  ["STRING","8 ต่อตัวอักษร","ข้อความ ASCII","ชื่อสินค้า ข้อความแสดงผล","o"]
+];
+
+function m2(e){
+  const C={"":"ทั้งหมด",r:"บิตและข้อมูลดิบ",i:"จำนวนเต็ม",d:"ทศนิยม",o:"เวลาและข้อความ"};
+  const icons={"":"📋",r:"🔘",i:"🔢",d:"📊",o:"⏰"};
+  e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">📦</span> คลังชนิดข้อมูลตามมาตรฐาน IEC 61131-3</h2>
+<p>มาตรฐาน IEC 61131-3 กำหนดชนิดข้อมูลเพื่อให้ PLC ทุกแบรนด์ใช้ร่วมกันได้</p>
+<div id="ch" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">${Object.entries(C).map(([k,v])=>`<button class="btn btn-outline btn-sm" data-k="${k}">${icons[k]} ${v}</button>`).join("")}</div>
+<div class="tw"><table><thead><tr><th>ชนิด</th><th>ขนาด (บิต)</th><th>ช่วงค่า</th><th>ใช้กับงาน</th></tr></thead><tbody id="tb"></tbody></table></div>
+<div class="takeaway"><b>Key Takeaway:</b> ชนิดข้อมูลแบ่งเป็น 4 กลุ่มหลัก — บิต/ข้อมูลดิบ, จำนวนเต็ม, ทศนิยม, เวลาและข้อความ เลือกให้ตรงกับลักษณะข้อมูลที่จะจัดเก็บ</div>
+</div>`;
+  const d=k=>{$$("#ch button").forEach(b=>{b.classList.toggle("btn-primary",b.dataset.k==k);b.classList.toggle("btn-outline",b.dataset.k!=k)});
+    $("#tb").innerHTML=T.filter(t=>!k||t[4]==k).map(t=>`<tr><td class="m"><b>${t[0]}</b></td><td>${t[1]}</td><td class="m">${t[2]}</td><td>${t[3]}</td></tr>`).join("")};
+  $$("#ch button").forEach(b=>b.onclick=()=>d(b.dataset.k));d("");
+}
+
+/* ═══════════════════ M3: ตัวช่วยเลือก ═══════════════════ */
+const W={
+  s:{q:"ข้อมูลที่จะเก็บคืออะไร?",o:[
+    ["🔘 สถานะ ON/OFF","=BOOL|มีแค่ 2 สถานะ ใช้ 1 บิตพอ"],
+    ["🔢 จำนวนเต็ม เช่น นับชิ้นงาน","i"],
+    ["📊 ทศนิยม เช่น อุณหภูมิ","d"],
+    ["⏰ ระยะเวลา","=TIME|ใช้กับ Timer เช่น T#5s"],
+    ["🔤 ข้อความ","=STRING|เก็บเป็นอักขระ ASCII ตัวละ 1 ไบต์"],
+    ["📦 กลุ่มบิตหลายจุด","=WORD|เก็บ 16 สัญญาณใน Register เดียว"]
+  ]},
+  i:{q:"ค่ามากที่สุดที่ต้องเก็บเป็นเท่าใด?",o:[
+    ["0 ถึง 255","=USINT|8 บิต ไม่ติดลบ ประหยัดที่สุด"],
+    ["ติดลบได้ ไม่เกิน ±127","=SINT|8 บิต มีเครื่องหมาย"],
+    ["ติดลบได้ ไม่เกิน ±32,767","=INT|16 บิต เลือกใช้บ่อยที่สุด"],
+    ["0 ถึง 65,535","=UINT|16 บิต ไม่ติดลบ"],
+    ["เกินหลักหมื่น","=DINT|32 บิต กันค่าล้น"]
+  ]},
+  d:{q:"ต้องการความละเอียดระดับใด?",o:[
+    ["ค่าอนาล็อกทั่วไป (~7 หลัก)","=REAL|32 บิต แม่นยำ ~7 หลัก เพียงพอสำหรับงานส่วนใหญ่"],
+    ["คำนวณละเอียดสูงมาก (~15 หลัก)","=LREAL|64 บิต แม่นยำ ~15 หลัก"]
+  ]}
+};
+
+function m3(e){
+  let path=[];
+  const showResult=(t,w)=>{
+    e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">🧭</span> ตัวช่วยเลือกชนิดข้อมูล</h2>
+<div class="card" style="text-align:center;padding:24px">
+  <div style="font-size:.85rem;color:var(--sub);margin-bottom:8px">ผลลัพธ์: ชนิดข้อมูลที่เหมาะสม</div>
+  <div style="font-size:2rem;font-weight:700;color:var(--acc);margin:8px 0" class="pop">${t}</div>
+  <div style="font-size:.95rem;color:var(--sub)">${w}</div>
+</div>
+<button class="btn btn-primary" id="rs">🔄 เริ่มใหม่</button>
+</div>`;
+    $("#rs").onclick=()=>{path=[];render()};
+  };
+
+  const render=()=>{
+    const k=path[path.length-1]||"s",n=W[k];
+    e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">🧭</span> ตัวช่วยเลือกชนิดข้อมูล</h2>
+<p>ตอบคำถามทีละข้อ ระบบจะแนะนำชนิดข้อมูลที่เหมาะสม</p>
+${path.length?`<div style="font-size:.82rem;color:var(--sub);margin-bottom:8px">📍 ${path.join(" → ")}</div>`:""}
+<div class="card">
+  <div style="font-weight:600;font-size:1rem;margin-bottom:12px">${n.q}</div>
+  <div class="opts">${n.o.map((o,j)=>`<button data-j="${j}">${o[0]}</button>`).join("")}</div>
+</div>
+${path.length?`<button class="btn btn-outline btn-sm" id="rs">← เริ่มใหม่</button>`:""}
+<div class="takeaway"><b>Key Takeaway:</b> เลือกชนิดข้อมูลตามลักษณะข้อมูล (ON/OFF → BOOL, จำนวนเต็ม → INT/DINT, ทศนิยม → REAL)</div>
+</div>`;
+    if($("#rs"))$("#rs").onclick=()=>{path=[];render()};
+    $$(".opts button").forEach(b=>b.onclick=()=>{
+      const o=n.o[b.dataset.j];
+      if(o[1][0]==="="){const[t,w]=o[1].slice(1).split("|");showResult(t,w)}
+      else{path.push(o[0]);render2(o[1])}
+    });
+  };
+
+  const render2=k=>{
+    const n=W[k];
+    e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">🧭</span> ตัวช่วยเลือกชนิดข้อมูล</h2>
+<div class="card">
+  <div style="font-weight:600;font-size:1rem;margin-bottom:12px">${n.q}</div>
+  <div class="opts">${n.o.map((o,j)=>`<button data-j="${j}">${o[0]}</button>`).join("")}</div>
+</div>
+<button class="btn btn-outline btn-sm" id="rs">← เริ่มใหม่</button>
+</div>`;
+    $("#rs").onclick=render;
+    $$(".opts button").forEach(b=>b.onclick=()=>{
+      const[t,w]=n.o[b.dataset.j][1].slice(1).split("|");showResult(t,w);
+    });
+  };
+  render();
+}
+
+/* ═══════════════════ M4: ล็อกเกอร์ 16-Bit ═══════════════════ */
+function m4(e){
+  let v=0;
+  e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">🔢</span> ล็อกเกอร์ความจำ 16-Bit Register</h2>
+<p>คลิกบิตเพื่อสลับ 0/1 แล้วดูว่าค่าเปลี่ยนในแต่ละมุมมองอย่างไร — ทดลองกดจนเข้าใจว่าข้อมูลถูกจัดเก็บอย่างไรในหน่วยความจำ PLC</p>
+<div id="bits" class="bits"></div>
+<div class="card" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+  <label style="flex:1;min-width:200px">ตั้งค่าฐานสิบ (0–65535)
+    <input id="iv" type="number" min="0" max="65535" value="0" style="width:100%">
+  </label>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="btn btn-outline btn-sm" id="p1">+1</button>
+    <button class="btn btn-outline btn-sm" id="mx">ตั้ง 32767</button>
+    <button class="btn btn-outline btn-sm" id="z">ล้าง 0</button>
+  </div>
+</div>
+<div id="o" class="out"></div>
+<div class="takeaway"><b>Key Takeaway:</b> Register 16 บิต แบ่งเป็น High Byte (บิต 15–8) และ Low Byte (บิต 7–0) ค่าเดียวกันแปลความหมายได้ทั้ง UINT (ไม่ติดลบ) และ INT (มีเครื่องหมาย)</div>
+</div>`;
+
+  const d=()=>{
+    let h="";
+    for(const[a,b,t]of[[15,8,"High Byte (บิต 15–8)"],[7,0,"Low Byte (บิต 7–0)"]]){
+      h+=`<div class="byte-group"><p>${t}</p>`;
+      for(let i=a;i>=b;i--)h+=`<button class="bit ${v>>i&1?"on":""}" data-i="${i}" aria-label="บิต ${i}"><small>${i}</small>${v>>i&1}</button>`;
+      h+="</div>"
+    }
+    $("#bits").innerHTML=h;
+    $$(".bit").forEach(b=>b.onclick=()=>{v^=1<<b.dataset.i;d()});
+    $("#iv").value=v;
+    const signed=v>32767?v-65536:v;
+    $("#o").innerHTML=`<b>Low Byte</b> : ${v&255} (16#${hx(v&255)})<br><b>High Byte</b>: ${v>>8} (16#${hx(v>>8)})<br><b>WORD / UINT</b> : ${f(v)} (16#${hx(v,4)})<br><b>INT</b> (มีเครื่องหมาย): ${f(signed)} ${v>32767?`<span class="chip-bad">⚠ ค่าล้นจาก 32767!</span>`:""}`;
+  };
+  $("#iv").onchange=x=>{v=Math.max(0,Math.min(65535,+x.target.value|0));d()};
+  $("#p1").onclick=()=>{v=(v+1)&65535;d()};
+  $("#mx").onclick=()=>{v=32767;d()};
+  $("#z").onclick=()=>{v=0;d()};
+  d();
+}
+
+/* ═══════════════════ M5: ASCII & String ═══════════════════ */
+function m5(e){
+  e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">🔤</span> ตาราง ASCII และการบรรจุ String ลง Register</h2>
+<p>ตัวอักษร 1 ตัว = 1 ไบต์ (8 บิต) ดังนั้น Register 16 บิต 1 ตัวเก็บได้ 2 ตัวอักษร<br><small style="color:var(--mute)">(ตัวแรกอยู่ Low Byte แบบ Mitsubishi)</small></p>
+<div class="card">
+  <label style="font-weight:500">พิมพ์ข้อความ (ภาษาอังกฤษ)
+    <input id="t" type="text" value="PLC1" maxlength="16" style="flex:1;min-width:140px">
+  </label>
+</div>
+<div id="o"></div>
+<h3>ตาราง ASCII 32–126 (คลิกดูรหัส)</h3>
+<div id="gr" class="gr"></div>
+<div id="gi" class="out">👆 คลิกอักขระเพื่อดูรหัส</div>
+<div class="takeaway"><b>Key Takeaway:</b> ASCII ใช้ 7 บิตแทนอักขระ (0–127) — 'A'=65, 'a'=97, '0'=48 Register 16 บิต 1 ตัวเก็บได้ 2 ตัวอักษร</div>
+</div>`;
+
+  const sh=c=>`'${String.fromCharCode(c)}' = ฐานสิบ <b>${c}</b>, 16#${hx(c)}, ฐานสอง ${c.toString(2).padStart(8,"0")}`;
+  const u=()=>{
+    const s=[...$("#t").value],c=s.map(x=>x.charCodeAt(0)),bad=c.some(x=>x>127),k=c.map(x=>x>127?63:x);
+    let h=`<div class="tw"><table><thead><tr><th>ตัวอักษร</th><th>ฐานสิบ</th><th>ฐานสิบหก</th><th>ฐานสอง</th></tr></thead><tbody>${s.map((x,i)=>`<tr><td class="m" style="font-size:1.1rem">${x}</td><td>${k[i]}</td><td class="m">${hx(k[i])}</td><td class="m">${k[i].toString(2).padStart(8,"0")}</td></tr>`).join("")}</tbody></table></div><div class="out">`;
+    for(let i=0;i<k.length;i+=2){
+      const a=k[i],b=k[i+1]||0;
+      h+=`<b>D${i/2}</b> = 16#${hx(b<<8|a,4)} (Low=${hx(a)} High=${hx(b)})<br>`;
+    }
+    h+="</div>"+(bad?`<p class="bad" style="margin-top:8px">⚠ ASCII รองรับรหัส 0–127 เท่านั้น อักษรไทยหรืออักขระอื่นต้องใช้การเข้ารหัสแบบอื่น (ตารางนี้แทนด้วย ?)</p>`:"");
+    $("#o").innerHTML=h;
+  };
+  $("#t").oninput=u;u();
+  $("#gr").innerHTML=Array.from({length:95},(_,i)=>`<button>${String.fromCharCode(i+32)}</button>`).join("");
+  $$("#gr button").forEach((b,i)=>b.onclick=()=>$("#gi").innerHTML=sh(i+32));
+}
+
+/* ═══════════════════ M6: เทียบแบรนด์ PLC ═══════════════════ */
+function m6(e){
+  e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">🔀</span> เปรียบเทียบการเรียกชื่อความจำ</h2>
+<p>แต่ละแบรนด์ PLC ใช้สัญลักษณ์แตกต่างกัน แต่แนวคิดพื้นฐานเหมือนกัน</p>
+<div class="tw"><table><thead><tr><th>ชนิด</th><th>IEC 61131-3</th><th>Siemens</th><th>Mitsubishi</th></tr></thead><tbody>${[
+  ["Input (บิต)","%IX0.0","I0.0","X0"],
+  ["Output (บิต)","%QX0.0","Q0.0","Y0"],
+  ["Memory (บิต)","%MX0.0","M0.0","M0"],
+  ["Byte (8 บิต)","%MB0","MB0","K2M0 (รวม 8 บิต)"],
+  ["Word (16 บิต)","%MW0","MW0","D0"],
+  ["DWord (32 บิต)","%MD0","MD0","D0 กับ D1 (2 Register)"],
+  ["Timer","TON","T0 / TON","T0 K50 (หน่วยตามรุ่น)"],
+  ["Counter","CTU","C0 / CTU","C0 K10"]
+].map(r=>`<tr><td>${r[0]}</td>${r.slice(1).map(x=>`<td class="m">${x}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+
+<div class="card-flat" style="font-size:.85rem;color:var(--sub)">
+  💡 <b>หมายเหตุ:</b> Mitsubishi รุ่น FX ใช้เลขฐานแปดกับ X และ Y (X0 ถึง X7 แล้วต่อด้วย X10)
+</div>
+
+<h3>การซ้อนทับของ Memory Address (แบบ Siemens)</h3>
+<p>Memory ของ Siemens เป็นระบบ byte-addressable เมื่อเข้าถึงเป็น Word หรือ DWord จะซ้อนทับไบต์หลายตัว — ต้องระวังไม่เขียนทับกัน</p>
+<div class="card">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <select id="ty" style="min-width:120px"><option value="1">MB (1 ไบต์)</option><option value="2" selected>MW (2 ไบต์)</option><option value="4">MD (4 ไบต์)</option></select>
+    <label>หมายเลข <input id="ix" type="number" min="0" max="7" value="1" style="width:70px"></label>
+  </div>
+  <div id="cl" style="margin:12px 0;display:flex;flex-wrap:wrap;gap:4px"></div>
+  <div id="o2" class="out"></div>
+</div>
+<div class="takeaway"><b>Key Takeaway:</b> MW0 ใช้ MB0+MB1, MW1 ใช้ MB1+MB2 — ถ้าเขียนทั้ง MW0 และ MW1 จะทับกันที่ MB1! ระวังการจัดสรร Address</div>
+</div>`;
+
+  const u=()=>{
+    const z=+$("#ty").value,i=Math.max(0,Math.min(7,+$("#ix").value|0));
+    const N=z==1?"MB":z==2?"MW":"MD";
+    $("#cl").innerHTML=Array.from({length:8},(_,j)=>`<span class="cell ${j>=i&&j<i+z?"on":""}">${j>=i&&j<i+z?"▓":"░"} MB${j}</span>`).join("");
+    const ov=[];for(let j=Math.max(0,i-z+1);j<=i+z-1;j++)if(j!=i&&z>1)ov.push(N+j);
+    $("#o2").innerHTML=`<b>${N}${i}</b> ใช้ไบต์ <b>MB${i}</b> ถึง <b>MB${i+z-1}</b>${ov.length?`<br><span class="warn">⚠ ซ้อนทับกับ: ${ov.join(", ")}</span>`:""}${z>1?`<br>ถ้าเขียนค่าลง ${N}${i} แล้วใช้ ${ov[0]||N} ด้วย ข้อมูลจะถูกทับกัน`:""}`;
+  };
+  $("#ty").onchange=u;$("#ix").oninput=u;u();
+}
+
+/* ═══════════════════ M7: Timer & Counter ═══════════════════ */
+function m7(e){
+  let cv=0,pv=5,x=0,b=8,et=0,on=0;
+  e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">⏱️</span> จำลอง Timer และ Counter</h2>
+<p>ทดลองทำงานจริงของ Timer On-Delay (TON) และ Counter Up (CTU) ซึ่งเป็นคำสั่งพื้นฐานในโปรแกรม PLC</p>
+
+<h3>⏱️ Timer On-Delay (TON)</h3>
+<div class="card">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+    <label><input type="checkbox" id="in"> IN (สัญญาณเริ่มจับเวลา)</label>
+    <label>PT <input type="range" id="pt" min="1" max="10" value="3" style="width:120px"> <b id="ptv" style="color:var(--acc)">3</b> วินาที</label>
+  </div>
+  <div class="bar-anim"><b id="eb" style="width:0"></b></div>
+  <div id="to" class="out mono" style="margin-top:8px"></div>
+  <div style="font-size:.82rem;color:var(--sub);margin-top:6px">
+    📌 TON: เมื่อ IN=1 ต่อเนื่อง เวลา ET จะนับขึ้นเรื่อยๆ จนถึง PT แล้ว Q=1 ถ้า IN กลับเป็น 0 ก่อนถึง ET จะรีเซ็ต
+  </div>
+</div>
+
+<h3>🔄 Counter Up (CTU)</h3>
+<div class="card">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <label>PV <input type="number" id="pv" min="1" max="20" value="5" style="width:70px"></label>
+    <button class="btn btn-primary btn-sm" id="cu">⚡ พัลส์ CU</button>
+    <button class="btn btn-outline btn-sm" id="rs">🔄 Reset</button>
+  </div>
+  <div id="co" class="out mono"></div>
+  <div style="font-size:.82rem;color:var(--sub);margin-top:6px">
+    📌 CTU: นับเพิ่ม 1 ทุกขอบขาขึ้นของ CU เมื่อ CV ≥ PV แล้ว Q=1
+  </div>
+</div>
+
+<h3>💥 ทดลองค่าล้นของตัวนับ</h3>
+<div class="card">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <select id="bt"><option value="8">SINT (8 บิต, ±127)</option><option value="16">INT (16 บิต, ±32,767)</option></select>
+    <button class="btn btn-outline btn-sm" id="a1">+1</button>
+    <button class="btn btn-outline btn-sm" id="omx">ตั้งค่าสูงสุด</button>
+  </div>
+  <div id="wo" class="out mono"></div>
+  <div style="font-size:.82rem;color:var(--sub);margin-top:6px">
+    📌 ค่าล้น (Overflow): เมื่อบวก 1 เกินค่าสูงสุด จะวนกลับเป็นค่าต่ำสุด ทำให้ระบบทำงานผิดพลาดได้!
+  </div>
+</div>
+
+<div class="takeaway"><b>Key Takeaway:</b> TON หน่วงเวลาก่อนเปิด, CTU นับพัลส์จนถึงค่าที่ตั้ง — ต้องเลือกชนิดข้อมูลตัวนับให้พอกับจำนวนที่ต้องนับ ไม่เช่นนั้นจะเกิดค่าล้น</div>
+</div>`;
+
+  const dt=()=>{const pt=+$("#pt").value;$("#ptv").textContent=pt;
+    $("#eb").style.width=et/pt*100+"%";
+    $("#to").innerHTML=`<span class="led ${et>=pt?"on":""}"></span> Q = ${et>=pt?1:0}   ET = ${et.toFixed(1)}s / PT = ${pt}s`};
+  const dc=()=>{pv=+$("#pv").value||1;
+    $("#co").innerHTML=`<span class="led ${cv>=pv?"on":""}"></span> CV = ${cv} / PV = ${pv}   Q = ${cv>=pv?1:0} ${cv>=pv?'<span class="chip-ok">✓ ถึงค่าที่ตั้ง</span>':""}`};
+  const dw=()=>{const max=2**(b-1)-1;const min=-(2**(b-1));
+    $("#wo").innerHTML=`x = <b>${f(x)}</b> (ช่วง ${f(min)} ถึง ${f(max)})${x==min&&x!=0?` <span class="chip-bad">💥 ค่าล้น! วนกลับเป็น ${f(min)}</span>`:""}`};
+
+  $("#in").onchange=q=>{on=q.target.checked};
+  $("#pt").oninput=dt;
+  tm=setInterval(()=>{const pt=+$("#pt").value;et=on?Math.min(et+.1,pt):0;dt()},100);
+  $("#cu").onclick=()=>{cv++;dc()};
+  $("#rs").onclick=()=>{cv=0;dc()};
+  $("#pv").oninput=dc;
+  $("#bt").onchange=q=>{b=+q.target.value;x=0;dw()};
+  $("#a1").onclick=()=>{x=wrap(x+1,b);dw()};
+  $("#omx").onclick=()=>{x=2**(b-1)-1;dw()};
+  dt();dc();dw();
+}
+
+/* ═══════════════════ M8: แบบทดสอบ ═══════════════════ */
+const Q=[
+  ["1 ไบต์ (Byte) มีกี่บิต","8","4","16","32","1 Byte = 8 Bit"],
+  ["WORD มีขนาดกี่บิต","16","8","32","64","WORD = 2 Byte = 16 Bit"],
+  ["INT (16 บิต มีเครื่องหมาย) เก็บค่าได้ช่วงใด","-32,768 ถึง 32,767","0 ถึง 65,535","-128 ถึง 127","0 ถึง 255","16 บิตแบ่งครึ่งเป็นค่าลบและค่าบวก"],
+  ["UINT เก็บค่าได้ช่วงใด","0 ถึง 65,535","-32,768 ถึง 32,767","0 ถึง 255","0 ถึง 32,767","ไม่มีเครื่องหมาย 16 บิต = 2¹⁶ ค่า"],
+  ["ควรใช้ชนิดใดเก็บสถานะสวิตช์ ON/OFF","BOOL","INT","REAL","STRING","สองสถานะใช้ 1 บิต"],
+  ["ควรใช้ชนิดใดเก็บอุณหภูมิ 36.75 °C","REAL","INT","BOOL","BYTE","INT เก็บทศนิยมไม่ได้"],
+  ["ใช้ ADD บวก 1 กับ INT ที่เก็บ 32,767 ผลโดยทั่วไปคือ","ล้นเป็น -32,768","32,768","0","65,535","ค่าเกินช่วง 16 บิตจึงวนกลับ"],
+  ["DINT มีขนาดกี่ไบต์","4","2","1","8","32 บิต = 4 ไบต์"],
+  ["รหัส ASCII ฐานสิบของ 'A' คือ","65","48","97","32","'A' = 65, 'a' = 97, '0' = 48"],
+  ["Register 16 บิต 1 ตัวเก็บอักขระ ASCII ได้กี่ตัว","2","1","4","8","อักขระละ 1 ไบต์ Register มี 2 ไบต์"],
+  ["ที่อยู่ %MW0 ตามมาตรฐาน IEC หมายถึง","Memory Word 16 บิต","Input Bit","Output Byte","Timer","M = Memory, W = Word"],
+  ["ใน Siemens ที่อยู่ MW0 ใช้ไบต์ใดบ้าง","MB0 และ MB1","MB0 เท่านั้น","MB1 และ MB2","MB0 ถึง MB3","Word 2 ไบต์ เริ่มที่ MB0"],
+  ["Mitsubishi ใช้สัญลักษณ์ใดแทนอินพุต","X","I","%IX","IN","X = Input, Y = Output"],
+  ["Timer TON ให้ Q=1 เมื่อใด","IN=1 ต่อเนื่องจนครบเวลา PT","ทันทีที่ IN=1","เมื่อ IN เปลี่ยนจาก 1 เป็น 0","เมื่อ ET เท่ากับ 0","On-Delay คือหน่วงก่อนเปิด"],
+  ["Counter CTU นับเพิ่มเมื่อใด","ขอบขาขึ้นของ CU","ขณะที่ CU เป็น 1 ตลอด","ขอบขาลงของ CU","เมื่อกด Reset","นับทีละพัลส์ที่เปลี่ยน 0 เป็น 1"],
+  ["Raw Analog 0–27648 แปลงเป็น 0.0–100.0 ควรเก็บผลเป็น","REAL","BOOL","BYTE","USINT","ผลลัพธ์มีทศนิยม"],
+  ["USINT เก็บค่าได้ช่วงใด","0 ถึง 255","-128 ถึง 127","0 ถึง 65,535","0 ถึง 127","8 บิต ไม่มีเครื่องหมาย"],
+  ["WORD ค่า 16#1234 มี Low Byte เป็นเท่าใด","16#34","16#12","16#1234","16#00","Low Byte คือครึ่งขวา (บิต 7-0)"],
+  ["ชนิด TIME ใช้เก็บอะไร","ระยะเวลา เช่น T#5s","ตัวอักษร","ค่าทศนิยม","สถานะ ON/OFF","ใช้กำหนดค่าเวลาให้ Timer"],
+  ["SINT ที่เก็บ 127 เมื่อบวก 1 จะได้","-128","128","0","255","SINT 8 บิต มีเครื่องหมาย ค่าล้นวนกลับ"]
+];
+const sf=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
+
+const STORE_KEY="plc_quiz_records";
+const GSHEET_KEY="plc_gsheet_url";
+// วาง URL ของ Google Apps Script Web App ที่นี่ (เมื่อ Deploy แล้ว) เพื่อให้ส่งคะแนนอัตโนมัติทุกคนที่เปิดลิงก์ GitHub
+const DEFAULT_GSHEET_URL="https://script.google.com/macros/s/AKfycbwX8pMAx-41vyTWOaFTirdUXbWcGWYXkG5zi7bowy3js3pALbfa4lYTDlgx7JTnEmR1NQ/exec";
+const getSheetUrl=()=>{try{return(localStorage.getItem(GSHEET_KEY)||DEFAULT_GSHEET_URL).trim()}catch{return DEFAULT_GSHEET_URL}};
+const getRecords=()=>{try{return JSON.parse(localStorage.getItem(STORE_KEY)||"[]")}catch{return[]}};
+const saveRecords=arr=>{try{localStorage.setItem(STORE_KEY,JSON.stringify(arr))}catch{}};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const csvEsc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+function exportCSV(records,filename="plc_quiz_scores.csv"){
+  if(!records.length)return;
+  const header=["ลำดับ","วัน-เวลา","ชื่อ-นามสกุล","รหัส/เลขที่","ประเภทการทดสอบ","คะแนน","เต็ม","ร้อยละ (%)"];
+  const rows=records.map((r,idx)=>[idx+1,r.date,r.name,r.sid||"-",r.type,r.score,r.total,r.pct]);
+  const csv="\uFEFF"+[header,...rows].map(row=>row.map(csvEsc).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+async function sendToSheet(rec){
+  const url=getSheetUrl();
+  if(!url)return{ok:false,reason:"not_configured"};
+  try{
+    await fetch(url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(rec)});
+    return{ok:true};
+  }catch(err){
+    return{ok:false,reason:err.message||"network_error"};
+  }
+}
+
+function m8(e){
+  let qs=[],i=0,s=0,w=[],student={name:"",sid:"",type:"ก่อนเรียน (Pre-test)"};
+  try{
+    const last=JSON.parse(localStorage.getItem("plc_last_student")||"{}");
+    if(last.name)student.name=last.name;
+    if(last.sid)student.sid=last.sid;
+  }catch{}
+
+  const renderHistory=()=>{
+    const recs=getRecords();
+    if(!recs.length)return `<div class="card-flat no-print" style="text-align:center;color:var(--mute);font-size:.85rem">ยังไม่มีประวัติคะแนนที่บันทึกไว้ในเครื่องนี้</div>`;
+    return `<div class="card" style="margin-top:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <h3 style="margin:0">📋 ประวัติคะแนนที่บันทึกไว้ (${recs.length} รายการ)</h3>
+        <div class="no-print" style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" id="expAllCsv">📊 ส่งออก Excel (.csv)</button>
+          <button class="btn btn-outline btn-sm" id="expAllPdf">📄 พิมพ์ / PDF</button>
+          <button class="btn btn-outline btn-sm" id="clrRecs" style="color:var(--bad)">🗑️ ล้างทั้งหมด</button>
+        </div>
+      </div>
+      <div class="tw"><table><thead><tr><th>#</th><th>วัน-เวลา</th><th>ชื่อ-นามสกุล</th><th>รหัส</th><th>ประเภท</th><th>คะแนน</th><th>ร้อยละ</th><th class="no-print">ลบ</th></tr></thead>
+      <tbody>${recs.map((r,idx)=>`<tr>
+        <td>${idx+1}</td><td style="font-size:.78rem;white-space:nowrap">${esc(r.date)}</td><td><b>${esc(r.name)}</b></td><td class="m">${esc(r.sid||"-")}</td>
+        <td><span style="font-size:.78rem">${esc(r.type)}</span></td><td class="m"><b>${r.score}/${r.total}</b></td>
+        <td class="${r.pct>=60?"ok":"bad"}">${r.pct}%</td>
+        <td class="no-print"><button class="btn btn-outline btn-sm del-rec" data-idx="${idx}" style="padding:2px 8px;font-size:.75rem">✕</button></td>
+      </tr>`).join("")}</tbody></table></div>
+    </div>`;
+  };
+
+  const bindHistoryActions=(onRefresh)=>{
+    if($("#expAllCsv"))$("#expAllCsv").onclick=()=>exportCSV(getRecords());
+    if($("#expAllPdf"))$("#expAllPdf").onclick=()=>window.print();
+    if($("#clrRecs"))$("#clrRecs").onclick=()=>{
+      if(confirm("ต้องการล้างประวัติคะแนนทั้งหมดในเครื่องนี้ใช่หรือไม่?")){saveRecords([]);onRefresh();}
+    };
+    $$(".del-rec").forEach(b=>b.onclick=()=>{
+      const recs=getRecords();recs.splice(+b.dataset.idx,1);saveRecords(recs);onRefresh();
+    });
+  };
+
+  const showStart=()=>{
+    const curUrl=getSheetUrl();
+    e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">📝</span> แบบทดสอบวัดความเข้าใจ (20 ข้อ)</h2>
+<p>กรอกข้อมูลผู้เรียนก่อนเริ่มทำแบบทดสอบ ระบบจะบันทึกคะแนนไว้ในเครื่องอัตโนมัติ และสามารถส่งออกเป็นไฟล์ Excel (.csv) หรือ PDF ได้</p>
+<div class="card no-print">
+  <div style="display:grid;gap:12px">
+    <label style="flex-direction:column;align-items:stretch;gap:4px">
+      <span style="font-weight:500">ชื่อ - นามสกุล <span class="bad">*</span></span>
+      <input id="sname" type="text" placeholder="เช่น นายสมชาย ใจดี" value="${esc(student.name)}">
+    </label>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+      <label style="flex-direction:column;align-items:stretch;gap:4px">
+        <span style="font-weight:500">รหัสนักเรียน / เลขที่</span>
+        <input id="ssid" type="text" placeholder="เช่น 01 หรือ 6620105001" value="${esc(student.sid)}">
+      </label>
+      <label style="flex-direction:column;align-items:stretch;gap:4px">
+        <span style="font-weight:500">ประเภทการทดสอบ</span>
+        <select id="stype">
+          <option value="ก่อนเรียน (Pre-test)" ${student.type==="ก่อนเรียน (Pre-test)"?"selected":""}>ก่อนเรียน (Pre-test)</option>
+          <option value="หลังเรียน (Post-test)" ${student.type==="หลังเรียน (Post-test)"?"selected":""}>หลังเรียน (Post-test)</option>
+          <option value="ฝึกทบทวน" ${student.type==="ฝึกทบทวน"?"selected":""}>ฝึกทบทวน</option>
+        </select>
+      </label>
+    </div>
+    <div id="formErr" class="bad" style="font-size:.85rem;display:none">⚠ กรุณากรอกชื่อ - นามสกุล ก่อนเริ่มทำแบบทดสอบ</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <button class="btn btn-primary" id="startQuiz">🚀 เริ่มทำแบบทดสอบ</button>
+      <span style="font-size:.78rem;color:${curUrl?"var(--ok)":"var(--mute)"}">${curUrl?"☁️ เชื่อมต่อ Google Sheets แล้ว":"💾 บันทึกในเครื่อง (ยังไม่เชื่อม Google Sheets)"}</span>
+    </div>
+  </div>
+</div>
+
+<details class="card-flat no-print" style="font-size:.85rem">
+  <summary style="cursor:pointer;font-weight:500;color:var(--sub)">⚙️ ตั้งค่าเชื่อมต่อ Google Sheets (สำหรับครูผู้สอน)</summary>
+  <div style="margin-top:10px;display:grid;gap:8px">
+    <p style="margin:0;font-size:.82rem">วาง Web App URL จาก Google Apps Script เพื่อส่งคะแนนนักเรียนเข้า Google Sheets อัตโนมัติ (หรือใส่ในตัวแปร <code>DEFAULT_GSHEET_URL</code> ในโค้ดก่อนอัปโหลดขึ้น GitHub)</p>
+    <input id="gsUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec" value="${esc(curUrl)}">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-outline btn-sm" id="saveGsUrl">💾 บันทึก URL</button>
+      <button class="btn btn-outline btn-sm" id="testGsUrl">🧪 ทดสอบส่งข้อมูล</button>
+      <span id="gsCfgMsg" style="font-size:.8rem"></span>
+    </div>
+  </div>
+</details>
+
+<div id="histWrap">${renderHistory()}</div>
+</div>`;
+    bindHistoryActions(showStart);
+    $("#saveGsUrl").onclick=()=>{
+      const v=$("#gsUrlInput").value.trim();
+      try{localStorage.setItem(GSHEET_KEY,v)}catch{}
+      $("#gsCfgMsg").innerHTML=v?'<span class="ok">✓ บันทึก URL แล้ว</span>':'<span class="warn">ล้าง URL แล้ว</span>';
+    };
+    $("#testGsUrl").onclick=async()=>{
+      const v=$("#gsUrlInput").value.trim();
+      if(!v){$("#gsCfgMsg").innerHTML='<span class="bad">กรุณาวาง URL ก่อน</span>';return}
+      try{localStorage.setItem(GSHEET_KEY,v)}catch{}
+      $("#gsCfgMsg").textContent="กำลังส่งข้อมูลทดสอบ...";
+      const res=await sendToSheet({date:new Date().toLocaleString("th-TH",{dateStyle:"short",timeStyle:"short"}),name:"ทดสอบระบบ (Test)",sid:"00",type:"ทดสอบเชื่อมต่อ",score:20,total:20,pct:100});
+      $("#gsCfgMsg").innerHTML=res.ok?'<span class="ok">✓ ส่งข้อมูลทดสอบแล้ว (ตรวจสอบใน Google Sheets)</span>':`<span class="bad">ส่งไม่สำเร็จ: ${esc(res.reason)}</span>`;
+    };
+    $("#startQuiz").onclick=()=>{
+      const nm=$("#sname").value.trim();
+      if(!nm){$("#formErr").style.display="block";$("#sname").focus();return}
+      student={name:nm,sid:$("#ssid").value.trim(),type:$("#stype").value};
+      try{localStorage.setItem("plc_last_student",JSON.stringify({name:student.name,sid:student.sid}))}catch{}
+      qs=sf(Q);i=0;s=0;w=[];r();
+    };
+  };
+
+  const showResult=()=>{
+    const p=Math.round(s/qs.length*100);
+    const now=new Date().toLocaleString("th-TH",{dateStyle:"short",timeStyle:"short"});
+    const rec={date:now,name:student.name,sid:student.sid,type:student.type,score:s,total:qs.length,pct:p};
+    const recs=getRecords();
+    recs.unshift(rec);
+    saveRecords(recs);
+    const hasSheet=!!getSheetUrl();
+    const grade=p>=80?"🏆 ยอดเยี่ยม!":p>=60?"👍 ดีมาก":p>=40?"📚 ทบทวนเพิ่มเติม":"💪 ลองอีกครั้ง";
+    e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">📝</span> สรุปผลการทดสอบ</h2>
+<div class="card" style="text-align:center;padding:28px">
+  <div style="font-size:.95rem;color:var(--sub);margin-bottom:4px">ผู้เข้าสอบ: <b style="color:var(--ink)">${esc(student.name)}</b> ${student.sid?`(${esc(student.sid)})`:""}</div>
+  <div style="font-size:.82rem;color:var(--mute);margin-bottom:12px">${esc(student.type)} · ${esc(now)}</div>
+  <div style="font-size:2.5rem;font-weight:700;color:${p>=60?"var(--ok)":"var(--bad)"}" class="pop">${s} / ${qs.length}</div>
+  <div style="font-size:1.1rem;margin:8px 0">${grade}</div>
+  <div class="bar-anim" style="max-width:300px;margin:12px auto"><b style="width:${p}%;background:${p>=60?"var(--ok)":"var(--bad)"}"></b></div>
+  <div style="font-size:.85rem;color:var(--sub)">${p}% · บันทึกผลลงในเครื่องแล้ว ✓</div>
+  <div id="gsStatus" style="font-size:.82rem;margin-top:6px;color:var(--sub)">${hasSheet?"☁️ กำลังส่งคะแนนไปยัง Google Sheets...":""}</div>
+  <div class="no-print" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+    <button class="btn btn-primary btn-sm" id="expOneCsv">📊 ส่งออก Excel (.csv)</button>
+    <button class="btn btn-outline btn-sm" id="expOnePdf">📄 ส่งออก PDF / พิมพ์</button>
+    <button class="btn btn-outline btn-sm" id="rt">🔄 ทำแบบทดสอบใหม่</button>
+  </div>
+</div>
+${w.length?`<h3>📌 ข้อที่ควรทบทวน (${w.length} ข้อ)</h3>${w.map(x=>`<div class="card-flat" style="margin:8px 0"><b>${x[0]}</b><br><span class="ok">✓ คำตอบ: ${x[1]}</span><br><small style="color:var(--sub)">${x[5]}</small></div>`).join("")}`:'<div class="card-flat" style="text-align:center"><span class="ok" style="font-size:1.1rem">🎉 ตอบถูกทุกข้อ!</span></div>'}
+<div id="histWrap">${renderHistory()}</div>
+</div>`;
+    if(hasSheet){
+      sendToSheet(rec).then(res=>{
+        const el=$("#gsStatus");
+        if(el)el.innerHTML=res.ok?'<span class="ok">☁️ ส่งคะแนนเข้า Google Sheets แล้ว ✓</span>':`<span class="bad">⚠ ส่งเข้า Google Sheets ไม่สำเร็จ (${esc(res.reason)})</span>`;
+      });
+    }
+    $("#expOneCsv").onclick=()=>exportCSV(getRecords());
+    $("#expOnePdf").onclick=()=>window.print();
+    $("#rt").onclick=showStart;
+    const refreshHist=()=>{const hw=$("#histWrap");if(hw){hw.innerHTML=renderHistory();bindHistoryActions(refreshHist);}};
+    bindHistoryActions(refreshHist);
+  };
+
+  const r=()=>{
+    if(i>=qs.length){showResult();return}
+    const q=qs[i];
+    e.innerHTML=`<div class="fade-in">
+<h2><span class="ico">📝</span> แบบทดสอบวัดความเข้าใจ</h2>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+  <span style="font-size:.85rem;color:var(--sub)">👤 ${esc(student.name)} (${esc(student.type)}) · ข้อ ${i+1} จาก ${qs.length}</span>
+  <span style="font-size:.85rem;color:var(--ok)">ถูก ${s} ข้อ</span>
+</div>
+<div class="bar-anim" style="margin-bottom:16px"><b style="width:${i/qs.length*100}%"></b></div>
+<div class="card">
+  <div style="font-weight:600;font-size:1rem;margin-bottom:14px;line-height:1.5">${q[0]}</div>
+  <div class="opts">${sf(q.slice(1,5)).map(o=>`<button>${o}</button>`).join("")}</div>
+  <div id="fb" style="margin-top:12px"></div>
+</div>
+</div>`;
+
+    $$(".opts button").forEach(btn=>btn.onclick=()=>{
+      const ok=btn.textContent==q[1];
+      ok?s++:w.push(q);
+      $$(".opts button").forEach(x=>{
+        x.disabled=true;
+        if(x.textContent==q[1])x.classList.add("sel");
+        else if(x==btn&&!ok)x.classList.add("wrong");
+      });
+      $("#fb").innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span class="${ok?"chip-ok":"chip-bad"}">${ok?"✓ ถูกต้อง":"✗ ยังไม่ถูก"}</span>
+      </div>
+      <div style="font-size:.88rem;color:var(--sub)">${q[5]}</div>
+      <button class="btn btn-primary btn-sm" id="nx" style="margin-top:10px">${i+1<qs.length?"ข้อต่อไป →":"ดูผลคะแนน"}</button>`;
+      $("#nx").onclick=()=>{i++;r()};
+      $("#nx").focus();
+    });
+  };
+  showStart();
+}
+
+/* ═══════════════════ Boot ═══════════════════ */
+go(0);
+</script>
+</body>
+</html>
